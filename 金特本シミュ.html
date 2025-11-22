@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A(全65種) コンプリート＆ハマり計測シミュレーター</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 { text-align: center; color: #444; margin-bottom: 5px; }
+        p.subtitle { text-align:center; margin-top: 0; color: #666; }
+        
+        /* レイアウト */
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .left-panel { flex: 1; min-width: 300px; }
+        .right-panel { flex: 1; min-width: 300px; }
+
+        /* 操作パネル */
+        .control-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        /* 統計グリッド：2列に変更して情報を整理 */
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .stat-item { font-size: 0.95rem; }
+        .stat-value { font-weight: bold; float: right; }
+        
+        /* ハマり強調用 */
+        .bad-stat { color: #dc3545; }
+
+        /* ボタン */
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .btn-pull { background-color: #007bff; color: white; }
+        .btn-pull:hover { background-color: #0056b3; }
+        .btn-comp { background-color: #6f42c1; color: white; font-weight: bold; }
+        .btn-comp:hover { background-color: #59359a; }
+        .btn-reset { background-color: #dc3545; color: white; }
+        .btn-reset:hover { background-color: #a71d2a; }
+
+        /* 最新結果表示 */
+        .latest-result {
+            text-align: center;
+            font-size: 1.1em;
+            margin: 15px 0;
+            min-height: 24px;
+            font-weight: bold;
+        }
+
+        /* 内訳グリッド */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .grid-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            padding: 5px 2px;
+            font-size: 0.8em;
+            position: relative;
+        }
+        .grid-item.acquired {
+            background-color: #e6f7ff;
+            border-color: #91d5ff;
+            color: #0050b3;
+        }
+        .grid-item.many {
+            background-color: #fff0f6; 
+            border-color: #ffadd2;
+            color: #c41d7f;
+        }
+        .count-badge {
+            display: block;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        .label { font-size: 0.75em; color: #888; }
+
+        /* 履歴 */
+        .history-area {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-height: 450px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: white;
+            margin-right: 5px;
+        }
+        .bg-hit { background: #d63384; }
+        .bg-miss { background: #aaa; }
+
+    </style>
+</head>
+<body>
+
+    <h1>A (5%) 排出シミュレーター</h1>
+    <p class="subtitle">全65種 (A1～A65) / ハズレ 95% / 被りあり</p>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="control-panel">
+                <div class="stats">
+                    <div class="stat-item">総試行回数 <span class="stat-value" id="totalCount">0</span></div>
+                    <div class="stat-item">A当選数 (確率) <span class="stat-value"><span id="hitCount">0</span> <span style="font-size:0.8em; font-weight:normal;" id="currentRate">(0.00%)</span></span></div>
+                    <div class="stat-item">種類取得率 <span class="stat-value"><span id="uniqueCount">0</span> / 65</span></div>
+                    <div class="stat-item" style="border-bottom:1px solid #ccc; margin-bottom:5px; padding-bottom:5px;"></div> <div class="stat-item">現在ハマり <span class="stat-value" id="currentHamari">0</span></div>
+                    <div class="stat-item bad-stat">最大ハマり <span class="stat-value" id="maxHamari">0</span></div>
+                </div>
+
+                <div class="latest-result" id="latestDisplay">準備完了</div>
+
+                <div>
+                    <button class="btn-pull" onclick="pull(1)">1回</button>
+                    <button class="btn-pull" onclick="pull(10)">10連</button>
+                    <button class="btn-reset" onclick="resetData()">リセット</button>
+                </div>
+                <hr>
+                <div style="margin-top:10px;">
+                    <button class="btn-comp" onclick="simulateCompletion()">コンプリートするまで回す</button>
+                    <div id="compMsg" style="font-size:0.85em; color:#666; margin-top:5px;">※自動で高速実行します</div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3 style="margin-top:0; font-size:1rem;">取得数一覧 (A1～A65)</h3>
+                <div id="gridContainer" class="grid-container">
+                    </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="history-area">
+                <h3 style="margin-top:0; position:sticky; top:0; background:white; padding-bottom:5px; border-bottom:2px solid #eee;">履歴 (最新100件)</h3>
+                <div id="historyLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 設定 ---
+        const TOTAL_A_TYPES = 65;
+        const PROBABILITY_A = 0.05;
+
+        // --- 状態変数 ---
+        let totalPulls = 0;
+        let hitCount = 0;
+        let itemCounts = new Array(TOTAL_A_TYPES + 1).fill(0);
+        let historyData = [];
+        
+        // ハマり関連
+        let currentHamari = 0; // 現在の連続ハズレ数
+        let maxHamari = 0;     // 最大連続ハズレ数
+
+        // 初期化
+        window.onload = () => {
+            initGrid();
+            updateUI([]);
+        };
+
+        function initGrid() {
+            const container = document.getElementById('gridContainer');
+            container.innerHTML = '';
+            for (let i = 1; i <= TOTAL_A_TYPES; i++) {
+                const div = document.createElement('div');
+                div.className = 'grid-item';
+                div.id = `grid-item-${i}`;
+                div.innerHTML = `<div class="label">A${i}</div><div class="count-badge" id="count-${i}">0</div>`;
+                container.appendChild(div);
+            }
+        }
+
+        // --- ロジック ---
+        function drawOne() {
+            const rand = Math.random();
+            if (rand < PROBABILITY_A) {
+                const subId = Math.floor(Math.random() * TOTAL_A_TYPES) + 1;
+                return { isHit: true, id: subId, name: `A${subId}` };
+            } else {
+                return { isHit: false, id: null, name: "ハズレ" };
+            }
+        }
+
+        function pull(times) {
+            let newResults = [];
+            for (let i = 0; i < times; i++) {
+                const result = drawOne();
+                totalPulls++;
+                
+                if (result.isHit) {
+                    hitCount++;
+                    itemCounts[result.id]++;
+                    currentHamari = 0; // 当たったらリセット
+                } else {
+                    currentHamari++; // ハズレたら加算
+                    if (currentHamari > maxHamari) {
+                        maxHamari = currentHamari; // 最大記録更新
+                    }
+                }
+                
+                historyData.unshift({ count: totalPulls, result: result });
+                newResults.push(result);
+            }
+            updateUI(newResults);
+        }
+
+        // コンプリートシミュレーション
+        function simulateCompletion() {
+            resetData(); // 開始時にリセット
+            
+            document.getElementById('latestDisplay').innerText = "シミュレーション実行中...";
+            document.getElementById('compMsg').innerText = "計算中...";
+
+            // 画面更新をブロックしないよう遅延実行
+            setTimeout(() => {
+                let collectedCount = 0;
+                
+                while (collectedCount < TOTAL_A_TYPES) {
+                    const result = drawOne();
+                    totalPulls++;
+                    
+                    if (result.isHit) {
+                        hitCount++;
+                        if (itemCounts[result.id] === 0) {
+                            collectedCount++;
+                        }
+                        itemCounts[result.id]++;
+                        currentHamari = 0;
+                    } else {
+                        currentHamari++;
+                        if (currentHamari > maxHamari) {
+                            maxHamari = currentHamari;
+                        }
+                    }
+
+                    // 安全装置
+                    if (totalPulls > 500000) break;
+                }
+
+                updateUI([]); // 全体のUI更新
+                
+                document.getElementById('latestDisplay').innerHTML = 
+                    `<span style="color:#6f42c1; font-weight:bold;">コンプリート達成！</span>`;
+                document.getElementById('compMsg').innerText = `完了 (総試行: ${totalPulls}回)`;
+                
+                // 履歴エリア
+                const historyContainer = document.getElementById('historyLog');
+                historyContainer.innerHTML = `<div style="padding:10px; text-align:center; color:#666;">※コンプリート時の履歴は省略されます。<br>最大ハマり: <b>${maxHamari}</b>回</div>`;
+
+            }, 50);
+        }
+
+        // --- UI更新 ---
+        function updateUI(latestResults) {
+            // 統計
+            document.getElementById('totalCount').innerText = totalPulls.toLocaleString();
+            document.getElementById('hitCount').innerText = hitCount.toLocaleString();
+            
+            let rate = 0;
+            if (totalPulls > 0) rate = (hitCount / totalPulls) * 100;
+            document.getElementById('currentRate').innerText = `(${rate.toFixed(2)}%)`;
+
+            const unique = itemCounts.filter(c => c > 0).length;
+            document.getElementById('uniqueCount').innerText = unique;
+            
+            // ハマり更新
+            document.getElementById('currentHamari').innerText = currentHamari.toLocaleString();
+            document.getElementById('maxHamari').innerText = maxHamari.toLocaleString();
+
+            // グリッド更新
+            updateGridOnly();
+            
+            // 履歴更新（手動ガチャ時のみ）
+            if (latestResults.length > 0) {
+                updateHistory(latestResults);
+            }
+        }
+
+        function updateGridOnly() {
+            let maxVal = 0;
+            for(let c of itemCounts) if(c > maxVal) maxVal = c;
+
+            for (let i = 1; i <= TOTAL_A_TYPES; i++) {
+                const count = itemCounts[i];
+                const el = document.getElementById(`grid-item-${i}`);
+                const countEl = document.getElementById(`count-${i}`);
+                
+                countEl.innerText = count;
+                el.className = 'grid-item';
+                
+                if (count > 0) {
+                    el.classList.add('acquired');
+                    if (count >= 5 && count === maxVal) {
+                         el.classList.add('many');
+                    }
+                }
+            }
+        }
+
+        function updateHistory(latestResults) {
+            const last = latestResults[latestResults.length - 1];
+            const display = document.getElementById('latestDisplay');
+            
+            if (last.isHit) {
+                display.innerHTML = `<span style="color:#d63384;">当選！ ${last.name}</span>`;
+            } else {
+                display.innerHTML = `<span style="color:#888;">${last.name}</span>`;
+            }
+
+            const historyContainer = document.getElementById('historyLog');
+            historyContainer.innerHTML = ''; // 毎回クリアして再描画
+            const limit = Math.min(historyData.length, 100);
+            
+            for (let i = 0; i < limit; i++) {
+                const item = historyData[i];
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                
+                const badgeClass = item.result.isHit ? 'bg-hit' : 'bg-miss';
+                const badgeText = item.result.isHit ? 'A' : '-';
+                const text = item.result.isHit ? `<b>${item.result.name}</b>` : 'ハズレ';
+                
+                div.innerHTML = `
+                    <span><span class="badge ${badgeClass}">${badgeText}</span> ${text}</span>
+                    <span style="color:#999; font-size:0.8em;">#${item.count}</span>
+                `;
+                historyContainer.appendChild(div);
+            }
+        }
+
+        function resetData() {
+            totalPulls = 0;
+            hitCount = 0;
+            currentHamari = 0;
+            maxHamari = 0;
+            itemCounts.fill(0);
+            historyData = [];
+            
+            document.getElementById('latestDisplay').innerText = "リセットしました";
+            document.getElementById('historyLog').innerHTML = "";
+            document.getElementById('compMsg').innerText = "※自動で高速実行します";
+            
+            updateUI([]);
+        }
+    </script>
+</body>
+</html>
